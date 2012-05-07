@@ -58,18 +58,20 @@ class TestErrorManager:
             print_error("Incomplete error object")
 
     def addToQuickfix(self):
-        vimstr = "{"
+        vimstr = "["
         idx = 1
         for error in self.errors:
             if idx > 1:
                 vimstr += ","
-            vimstr += str(idx) + ": {"
+            vimstr += "{"
             vimstr += "'filename':'"+error.file+"',"
             vimstr += "'lnum':'"+str(error.line)+"',"
             vimstr += "'text':'"+error.message+"',"
             vimstr += "'type':'"+error.type+"'"
             vimstr += "}"
-        vimstr += "}"
+            idx += 1
+        vimstr += "]"
+        print vimstr
         vim.command('call setqflist('+vimstr+')')
 
 
