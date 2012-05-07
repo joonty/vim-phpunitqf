@@ -11,37 +11,52 @@ def parse_test_output( ):
     firsterr = -1
     numfails = 0
     parser = TestOutputParser()
-    for line in fd:
-        if found == True:
-            parser.parseLine(line)
-        if "Time: " in line:
-            found = True
-        k = k + 1
+    parser.parse(fd)
 
 class TestError:
+    message = None
+    file = None
+    line = None
     type = "E"
-    def __init__(self,message,file,line):
+
+    def setMessage(self,message):
         self.message = message
+
+    def setFile(self,file):
         self.file = file
+
+    def setLine(self,line):
         self.line = line
 
+    def assertComplete(self):
+        if self.message == None:
+            return false
+        else if self.file == None:
+            return False
+        else if self.line == None:
+            return False
+        else:
+            return True
+
+
 class TestFailure(TestError):
-    def __init__(self,message,file,line):
-        TestError.__init__(self,message,file,line)
+    def __init__(self):
+        TestError.__init__(self)
         self.type = "F"
 
 
 class TestErrorManager:
-    
     def __init__(self):
         self.errors = []
         self.failures = []
 
     def addError(self,error):
-        self.errors.add(error)
+        if error.assertComplete():
+            self.errors.add(error)
 
     def addFailure(self,failure):
-        self.failures.add(failure)
+        if failure.assertComplete():
+            self.failures.add(failure)
 
 class TestOutputParser:
     parsingErrors = False
@@ -49,6 +64,14 @@ class TestOutputParser:
 
     def __init__(self):
         self.errors = TestErrorManager()
+
+    def parse(self,fd):
+        for line in fd:
+            if found == True:
+                self.parseLine(line)
+            if "Time: " in line:
+                found = True
+            k = k + 1
 
     def parseLine(self,line):
 
