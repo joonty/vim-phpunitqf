@@ -64,6 +64,8 @@ command! TestOutput call s:OpenPHPUnitOutput()
 
 " Run PHPUnit command and python parser
 function! s:RunPHPUnitTests(arg)
+    " Truncate current log file
+    call system("> ".g:phpunit_tmpfile)
     exe "!".g:phpunit_cmd." ".g:phpunit_args." ".a:arg." ".g:phpunit_args_append." | tee ".g:phpunit_tmpfile
     python parse_test_output()
 endfunction

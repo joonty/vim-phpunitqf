@@ -160,7 +160,7 @@ class TestOutputParser:
 
             message = "(" + testClass + "::" + testMethod + ")"
 
-            fileReg = "^([^:]+):(.+)$"
+            fileReg = "^([^:]+):([0-9]+)$"
 
             # Get multi-line message
             while True:
