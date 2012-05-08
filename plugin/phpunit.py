@@ -65,7 +65,7 @@ class TestError:
             return True
 
     def _escape(self,string):
-        return string.replace("'","\'")
+        return string.replace("'","\"")
 
 
 " Extends TestError, to represent a failure "
@@ -155,23 +155,31 @@ class TestOutputParser:
                 error = TestError()
 
             message = "(" + testClass + "::" + testMethod + ")"
-            message += " " + fd.next()
+
+            fileReg = "^([^:]+):(.+)$"
+
+            # Get multi-line message
+            while True:
+                line = fd.next().strip()
+                if re.match(fileReg,line):
+                    break
+
+                message += "\n" + line
 
             error.setMessage(message)
 
-            # Skip blank line
-            fd.next()
             testFile = testClass.replace("Case","") + ".php"
             foundFile = False
 
             while True:
-                fileName = fd.next().strip()
+
+                fileName = line
                 if len(fileName) == 0:
                     if foundFile == False:
                         print_error("Failed to find the file for test class "+testClass)
                     break
                 elif foundFile == False and testFile in fileName:
-                    matchObj = re.match("^([^:]+):(.+)$",fileName)
+                    matchObj = re.match(fileReg,fileName)
                     if matchObj:
                         filePath = matchObj.group(1)
                         lineNo = matchObj.group(2)
@@ -182,5 +190,6 @@ class TestOutputParser:
                         self.errors.add(error)
                     else:
                         print_error("Failed to parse line "+fileName)
+                line = fd.next().strip()
 
 

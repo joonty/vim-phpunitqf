@@ -36,7 +36,7 @@ endif
 
 " Debug enabled
 if !exists("g:phpunit_debug")
-    let g:phpunit_debug=0
+    let g:phpunit_debug=1
 endif
 
 command! -nargs=1 Test call s:RunPHPUnitTests(<q-args>)
