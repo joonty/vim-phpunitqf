@@ -26,7 +26,11 @@ def parse_test_output( ):
         fd.close()
         if manager.hasErrors():
             manager.addToQuickfix()
-    except:
+        else:
+            vim.command('echohl WarningMsg |echo "No test errors or failures" | echohl None') 
+            vim.command('cclose')
+            vim.command('call setqflist([])')
+    except Exception, e:
         print_error("An error has occured in parsing the PHPUnit error log")
 
 " Holds information about a single error "
