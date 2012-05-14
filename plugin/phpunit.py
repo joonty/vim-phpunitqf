@@ -6,6 +6,9 @@ import re
 def print_error(msg):
     vim.command("echohl Error | echo \""+msg+"\" | echohl None")
 
+""" 
+" Super intelligent debug function
+"""
 def debug(msg):
     if debugOn == 1:
         print msg
@@ -26,6 +29,10 @@ def parse_test_output( ):
         fd.close()
         if manager.hasErrors():
             manager.addToQuickfix()
+        elif parser.foundTestSummary == False:
+            vim.command('echohl Error |echo "phpunit failed to run (or so it seems)" | echohl None') 
+            vim.command('cclose')
+            vim.command('call setqflist([])')
         else:
             vim.command('echohl WarningMsg |echo "No test errors or failures" | echohl None') 
             vim.command('cclose')
@@ -117,18 +124,18 @@ class TestOutputParser:
     parsingFailures = False
     currentError = None
     foundErrors = False
+    foundTestSummary = False
 
     def __init__(self,manager):
         self.errors = manager
 
     def parse(self,fd):
         k = 0
-        found = False
         for line in fd:
-            if found == True:
+            if self.foundTestSummary == True:
                 self.parseLine(fd,line)
             if "Time: " in line:
-                found = True
+                self.foundTestSummary = True
             k = k + 1
 
     def parseLine(self,fd,line):
