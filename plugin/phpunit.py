@@ -30,11 +30,11 @@ def parse_test_output( ):
         if manager.hasErrors():
             manager.addToQuickfix()
         elif parser.foundTestSummary == False:
-            vim.command('echohl Error |echo "phpunit failed to run (or so it seems)" | echohl None') 
+            vim.command('echohl Error | echo "phpunit failed to run (or so it seems)" | echohl None') 
             vim.command('cclose')
             vim.command('call setqflist([])')
         else:
-            vim.command('echohl WarningMsg |echo "No test errors or failures" | echohl None') 
+            vim.command('echohl WarningMsg | echo "No test errors or failures" | echohl None') 
             vim.command('cclose')
             vim.command('call setqflist([])')
     except Exception, e:
@@ -67,7 +67,7 @@ class TestError:
 
     def assertComplete(self):
         if self.message == None:
-            return false
+            return False
         elif self.file == None:
             return False
         elif self.line == None:
@@ -125,6 +125,7 @@ class TestOutputParser:
     currentError = None
     foundErrors = False
     foundTestSummary = False
+    fileReg = "^([^:]+):([0-9]+)$"
 
     def __init__(self,manager):
         self.errors = manager
@@ -141,7 +142,6 @@ class TestOutputParser:
     def parseLine(self,fd,line):
         matchObj = re.match('There (?:were|was) ([0-9]*) (error|failure)',line,re.M)
         if matchObj:
-            numfails = matchObj.group(1)
             type = matchObj.group(2)
             self.foundErrors = True
             if type == "error":
@@ -167,12 +167,10 @@ class TestOutputParser:
 
             message = "(" + testClass + "::" + testMethod + ")"
 
-            fileReg = "^([^:]+):([0-9]+)$"
-
             # Get multi-line message
             while True:
                 line = fd.next().strip()
-                if re.match(fileReg,line):
+                if re.match(self.fileReg,line):
                     break
 
                 message += "\n" + line
@@ -181,26 +179,37 @@ class TestOutputParser:
 
             testFile = testClass.replace("Case","") + ".php"
             foundFile = False
+            firstLine = line
 
             while True:
 
                 fileName = line
                 if len(fileName) == 0:
                     if foundFile == False:
-                        print_error("Failed to find the file for test class "+testClass)
+                        print_error("Failed to find the file for test class "+testClass+", using top file")
+                        ret = self.parseFileLine(firstLine,error)
+                        if ret == False:
+                            raise Exception("Failed to parse the log")
                     break
                 elif foundFile == False and testFile in fileName:
-                    matchObj = re.match(fileReg,fileName)
-                    if matchObj:
-                        filePath = matchObj.group(1)
-                        lineNo = matchObj.group(2)
-                        debug("File: "+filePath+", "+lineNo)
-                        error.setFile(filePath)
-                        error.setLine(lineNo)
-                        foundFile = True
-                        self.errors.add(error)
-                    else:
-                        print_error("Failed to parse line "+fileName)
+                    foundFile = self.parseFileLine(fileName,error)
+                    if foundFile == False:
+                        print_error("Failed to parse line "+line)
                 line = fd.next().strip()
+
+    def parseFileLine(self,line,error):
+        matchObj = re.match(self.fileReg,line)
+        if matchObj:
+            filePath = matchObj.group(1)
+            lineNo = matchObj.group(2)
+            debug("File: "+filePath+", "+lineNo)
+            error.setFile(filePath)
+            error.setLine(lineNo)
+            self.errors.add(error)
+            return True
+        else:
+            debug("Failed to parse file from line: "+line)
+            return False
+
 
 
