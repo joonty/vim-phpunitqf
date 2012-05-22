@@ -51,6 +51,49 @@ The output is written to a temporary file. You can change the location of this (
 let g:phpunit_tmpfile = "/my/new/tmp/file"
 ```
 
+#### Callback for modifying arguments
+
+You can do some more in-depth argument handling when running tests, with callback functions. You can define a callback function and tell PHPUnitQf to use that function to parse and potentially modify the arguments passed to PHPUnit when running `:Test`. The callback function takes the arguments as it's parameter, and returns the modified arguments. Think of it as a filter for your test arguments. You can tell PHPUnitQf to use the callback with:
+
+```vim
+let g:phpunit_callback = "MyCallbackFunction"
+```
+
+A callback function looks like this:
+
+```vim
+function! MyCallbackFunction(args)
+    let l:args = a:args
+    " Do something with the arguments
+    return l:args
+endfunction
+```
+
+For example, let's say I want `:Test` on it's own (no arguments) to try and find and run a test case for the current file. I would write a callback that accepts the arguments to PHPUnit, and tries to work out a test case from the current filename if the arguments are empty. Here's one that I use that works for CakePHP (I won't explain it, see if you can understand it :D):
+
+```vim
+" Let PHPUnitQf use the callback function
+let g:phpunit_callback = "CakePHPTestCallback"
+
+function! CakePHPTestCallback(args)
+    " Trim white space
+    let l:args = substitute(a:args, '^\s*\(.\{-}\)\s*$', '\1', '')
+
+    " If no arguments are passed to :Test
+    if len(l:args) is 0
+        let l:file = expand('%')
+        if l:file =~ "^app/Test/Case.*"
+            " If the current file is a unit test
+            let l:args = substitute(l:file,'^app/Test/Case/\(.\{-}\)Test\.php$','\1','')
+        else
+            " Otherwise try and run the test for this file
+            let l:args = substitute(l:file,'^app/\(.\{-}\)\.php$','\1','')
+        endif
+    endif
+    return l:args
+endfunction
+```
+
 ### License
 
 This plugin is released under the [MIT License][3].
