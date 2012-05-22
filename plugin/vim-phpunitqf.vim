@@ -60,7 +60,7 @@ if !exists("g:phpunit_debug")
 endif
 
 if !exists("g:phpunit_callback")
-    let g:phpunit_callback = "CakePHPTestCallback"
+    let g:phpunit_callback = ""
 endif
 
 command! -nargs=* Test call s:RunPHPUnitTests(<q-args>)
