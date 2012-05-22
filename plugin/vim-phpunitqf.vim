@@ -59,14 +59,22 @@ if !exists("g:phpunit_debug")
     let g:phpunit_debug=0
 endif
 
-command! -nargs=1 Test call s:RunPHPUnitTests(<q-args>)
+if !exists("g:phpunit_callback")
+    let g:phpunit_callback = "CakePHPTestCallback"
+endif
+
+command! -nargs=* Test call s:RunPHPUnitTests(<q-args>)
 command! TestOutput call s:OpenPHPUnitOutput()
 
 " Run PHPUnit command and python parser
 function! s:RunPHPUnitTests(arg)
+    let s:args = a:arg
+    if len(g:phpunit_callback) > 0
+        exe "let s:args = ".g:phpunit_callback."('".s:args."')"
+    endif
     " Truncate current log file
     call system("> ".g:phpunit_tmpfile)
-    exe "!".g:phpunit_cmd." ".g:phpunit_args." ".a:arg." ".g:phpunit_args_append." | tee ".g:phpunit_tmpfile
+    exe "!".g:phpunit_cmd." ".g:phpunit_args." ".s:args." ".g:phpunit_args_append." | tee ".g:phpunit_tmpfile
     python parse_test_output()
 endfunction
 
