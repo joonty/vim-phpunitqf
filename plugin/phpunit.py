@@ -1,4 +1,3 @@
-import os
 import sys
 import vim
 import re
@@ -37,15 +36,19 @@ def parse_test_output( ):
             vim.command('echohl WarningMsg | echo "No test errors or failures" | echohl None') 
             vim.command('cclose')
             vim.command('call setqflist([])')
+    except ParserException, e:
+        print_error("An error has occured in parsing the PHPUnit error log: " + e.args[0])
     except Exception, e:
-        print_error("An error has occured in parsing the PHPUnit error log")
+        print_error("An error has occured: " + str(sys.exc_info()))
 
 " Holds information about a single error "
 class TestError:
     message = None
     file = None
     line = None
-    type = "E"
+
+    def __init__(self,type):
+        self.type = type
 
     def setMessage(self,message):
         self.message = message
@@ -55,6 +58,9 @@ class TestError:
 
     def setFile(self,file):
         self.file = file
+
+    def getType(self):
+        return self.type
 
     def getEscapedFile(self):
         return self._escape(self.file)
@@ -79,11 +85,6 @@ class TestError:
         return string.replace("'","\"")
 
 
-" Extends TestError, to represent a failure "
-class TestFailure(TestError):
-    type = "F"
-
-
 " A wrapper for a list of errors and failures "
 class TestErrorManager:
     def __init__(self):
@@ -91,7 +92,7 @@ class TestErrorManager:
 
     def add(self,error):
         if error.assertComplete():
-            debug("Adding error: "+ error.message)
+            debug("Adding error: \""+ error.message+"\"")
             self.errors.append(error)
         else:
             print_error("Incomplete error object")
@@ -106,7 +107,7 @@ class TestErrorManager:
             vimstr += "'filename':'"+error.getEscapedFile()+"',"
             vimstr += "'lnum':'"+error.getEscapedLine()+"',"
             vimstr += "'text':'"+error.getEscapedMessage()+"',"
-            vimstr += "'type':'"+error.type+"'"
+            vimstr += "'type':'"+error.getType()+"'"
             vimstr += "}"
             idx += 1
         vimstr += "]"
@@ -120,8 +121,7 @@ class TestErrorManager:
 
 " A parser for the error log "
 class TestOutputParser:
-    parsingErrors = False
-    parsingFailures = False
+    parsingType = False
     currentError = None
     foundErrors = False
     foundTestSummary = False
@@ -132,27 +132,25 @@ class TestOutputParser:
 
     def parse(self,fd):
         k = 0
-        for line in fd:
-            if self.foundTestSummary == True:
-                self.parseLine(fd,line)
-            if "Time: " in line:
-                self.foundTestSummary = True
-            k = k + 1
+        try:
+            for line in fd:
+                if self.foundTestSummary == True:
+                    self.parseLine(fd,line)
+                if "Time: " in line:
+                    self.foundTestSummary = True
+                k = k + 1
+        except StopIteration:
+            pass
 
     def parseLine(self,fd,line):
-        matchObj = re.match('There (?:were|was) ([0-9]*) (error|failure)',line,re.M)
+        matchObj = re.match('There (?:were|was) ([0-9]*) (error|failure|skipped|incomplete)',line,re.M)
         if matchObj:
             type = matchObj.group(2)
             self.foundErrors = True
-            if type == "error":
-                self.parsingErrors = True
-                debug("Parsing errors")
-            else:
-                self.parsingFailures = True
-                self.parsingErrors = False
-                debug("Parsing failures")
-
-        self.readError(fd,line)
+            debug("Parsing "+type)
+            self.parsingType = type[0].upper()
+        if self.foundErrors:
+            self.readError(fd,line)
 
     def readError(self,fd,line):
         matchObj = re.match("^[0-9]\) ([^:]+)::(.+)",line)
@@ -160,10 +158,7 @@ class TestOutputParser:
             testClass = matchObj.group(1)
             testMethod = matchObj.group(2)
 
-            if self.parsingFailures:
-                error = TestFailure()
-            else:
-                error = TestError()
+            error = TestError(self.parsingType)
 
             message = "(" + testClass + "::" + testMethod + ")"
 
@@ -189,13 +184,16 @@ class TestOutputParser:
                         print_error("Failed to find the file for test class "+testClass+", using top file")
                         ret = self.parseFileLine(firstLine,error)
                         if ret == False:
-                            raise Exception("Failed to parse the log")
+                            raise ParserException("Failed to parse the log")
                     break
                 elif foundFile == False and testFile in fileName:
                     foundFile = self.parseFileLine(fileName,error)
                     if foundFile == False:
                         print_error("Failed to parse line "+line)
-                line = fd.next().strip()
+                try:
+                    line = fd.next().strip()
+                except StopIteration:
+                    line = ""
 
     def parseFileLine(self,line,error):
         matchObj = re.match(self.fileReg,line)
@@ -212,4 +210,5 @@ class TestOutputParser:
             return False
 
 
-
+class ParserException(Exception):
+    pass
